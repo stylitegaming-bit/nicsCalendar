@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Naga Urban Apartment Reservation</title>
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  background: #f5f7fa;
+  padding: 20px;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+}
+
+h2 {
+  margin-bottom: 10px;
+}
+
+button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1e40af;
+}
+
+.info {
+  background: #f1f5f9;
+  padding: 14px;
+  border-radius: 10px;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+/* 🔴 FORCE UNAVAILABLE DATES TO BE RED */
+.fc-daygrid-day.unavailable-day {
+  background-color: #dc2626 !important; /* Force red background on the day cell */
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Naga Urban Apartment – Reservation</h2>
+
+  <div id="calendar"></div>
+
+  <div id="info" class="info">
+    Select dates to see price
+  </div>
+
+  <br>
+  <button onclick="reserve()">Reserve</button>
+</div>
+
+<script>
+const ROOM_NAME = "Naga Urban Appartment (NICS Condotel)";
+
+const API_URL = "https://script.google.com/macros/s/AKfycbygqdXRxXaloXJcaqU2lggJJz0bzWONYi0YVmtzUzOLTCB_8ffr49wNKO7Wtt2ZPQaB/exec";
+const RATE_WEEKDAY = 1000;
+const RATE_WEEKEND = 1300;
+
+let unavailable = [];
+let selectedStart = null;
+let selectedEnd = null;
+let weekendCount = 0;
+let totalCost = 0;
+
+fetch(API_URL)
+  .then(res => res.json())
+  .then(data => {
+    // ✅ FILTER ONLY ONE ROOM
+    unavailable = data.filter(
+      r => r["Room Name"] === ROOM_NAME
+    );
+    initCalendar();
+  });
+
+function initCalendar() {
+  const calendar = new FullCalendar.Calendar(
+    document.getElementById("calendar"),
+    {
+      initialView: "dayGridMonth",
+      selectable: true,
+      selectMirror: true,
+      selectOverlap: false,
+      height: "auto",
+
+      dayCellDidMount: function(info) {
+        const cellDate = info.date;
+        cellDate.setHours(0, 0, 0, 0); 
+
+        const isUnavailable = unavailable.some(r => {
+          const startDate = new Date(r["Start Date"]);
+          const endDate = new Date(r["End Date"]);
+   
+          return cellDate.getTime() >= startDate.getTime() && cellDate.getTime() < endDate.getTime();
+        });
+
+        if (isUnavailable) {
+          info.el.classList.add('unavailable-day');
+        }
+      },
+
+      selectAllow(info) {
+        return !unavailable.some(r => {
+          return (
+            new Date(r["Start Date"]) < info.end &&
+            new Date(r["End Date"]) > info.start
+          );
+        });
+      },
+
+      select(info) {
+        selectedStart = info.start;
+        selectedEnd = info.end;
+        computeCost();
+      }
+    }
+  );
+
+  calendar.render();
+}
+
+function computeCost() {
+  totalCost = 0;
+  weekendCount = 0;
+
+  let d = new Date(selectedStart);
+
+  while (d < selectedEnd) {
+    const day = d.getDay();
+    if (day === 5 || day === 6) {
+      totalCost += RATE_WEEKEND;
+      weekendCount++;
+    } else {
+      totalCost += RATE_WEEKDAY;
+    }
+    d.setDate(d.getDate() + 1);
+  }
+
+  document.getElementById("info").innerHTML = `
+    <strong>Selected Dates</strong><br>
+    ${selectedStart.toDateString()} → ${new Date(selectedEnd - 1).toDateString()}<br><br>
+    <strong>Total Cost:</strong> ₱${totalCost}<br>
+    <strong>Weekend Nights:</strong> ${weekendCount}
+  `;
+}
+
+function reserve() {
+  if (!selectedStart || !selectedEnd) {
+    alert("Please select a date range");
+    return;
+  }
+
+  fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({
+      room: ROOM_NAME,
+      start: selectedStart,
+      end: selectedEnd,
+      weekends: weekendCount
+    })
+  })
+  .then(() => {
+    alert("Reservation submitted!");
+    location.reload();
+  });
+}
+</script>
+
+</body>
+</html>
