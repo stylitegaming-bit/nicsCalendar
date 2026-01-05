@@ -13,16 +13,16 @@
 body {
   font-family: "Inter", system-ui, sans-serif;
   background: #f5f7fa;
-  padding: 20px;
+  padding: 10px;
 }
 
 .container {
-  max-width: 900px;
+  max-width: 100%;
   margin: auto;
   background: white;
-  padding: 20px;
+  padding: 10px;
   border-radius: 14px;
-  box-shadow: 0 10px 30px rgba(0,0,0,.08);
+  box-shadow: none;
 }
 
 h2 {
@@ -101,6 +101,26 @@ function initCalendar() {
   const calendar = new FullCalendar.Calendar(
     document.getElementById("calendar"),
     {
+        selectable: true,
+    
+    // ✅ NEW: Set a delay for touch events to properly register a selection.
+    // This tells the calendar to wait 500ms before triggering a selection.
+    longPressDelay: 500, 
+    
+    selectMirror: true,
+    
+        headerToolbar: {
+        left: 'prev',
+        center: 'title',
+        right: 'next' // Removed 'today' to simplify
+    },
+
+    // ✅ NEW: Dynamically change view based on screen width
+    // Switches to a simpler list view or a better-fitting month view
+    initialView: window.innerWidth < 600 ? 'listWeek' : 'dayGridMonth',
+
+    // ✅ NEW: Ensures the calendar scales correctly
+    contentHeight: 'auto',
       initialView: "dayGridMonth",
       selectable: true,
       selectMirror: true,
